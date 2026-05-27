@@ -5,6 +5,7 @@ import { assignmentApi } from '@/lib/api';
 import { Assignment } from '@/types';
 import Navbar from '@/components/ui/Navbar';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const statusColors: Record<string, { bg: string; color: string; border: string }> = {
   pending:    { bg: '#FFF8E6', color: '#854F0B', border: '#FAC775' },
@@ -14,6 +15,7 @@ const statusColors: Record<string, { bg: string; color: string; border: string }
 };
 
 export default function HistoryPage() {
+  const router = useRouter();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,13 +39,13 @@ export default function HistoryPage() {
     if (assignment.status === 'completed' && assignment.generatedPaper) {
       setGeneratedPaper(assignment.generatedPaper);
       setStep('output');
-      window.location.href = '/';
+      router.push('/');
     } else {
       const res = await assignmentApi.getById(assignment._id);
       if (res.data?.generatedPaper) {
         setGeneratedPaper(res.data.generatedPaper);
         setStep('output');
-        window.location.href = '/';
+        router.push('/');
       }
     }
   };

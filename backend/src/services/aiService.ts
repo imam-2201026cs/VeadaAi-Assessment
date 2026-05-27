@@ -60,7 +60,7 @@ Ensure the paper is comprehensive, well-structured, and appropriate for the subj
   onProgress?.(30, 'Sending to AI model...');
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-5',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 4096,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
