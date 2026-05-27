@@ -1,0 +1,171 @@
+import { GeneratedPaper, StudentInfo } from '@/types';
+
+export const exportToPDF = async (
+  paper: GeneratedPaper,
+  studentInfo: StudentInfo
+): Promise<void> => {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = 210;
+  const margin = 20;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  const checkPage = (needed = 10) => {
+    if (y + needed > 280) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // Header
+  doc.setFillColor(26, 26, 26);
+  doc.rect(0, 0, pageW, 40, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(paper.title, margin, 18);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(159, 225, 203);
+  doc.text(paper.subject, margin, 27);
+  doc.setTextColor(180, 178, 169);
+  doc.setFontSize(9);
+  doc.text(
+    `Total Marks: ${paper.totalMarks}   |   Duration: ${paper.duration}   |   Sections: ${paper.sections.length}`,
+    margin,
+    34
+  );
+
+  y = 52;
+  doc.setTextColor(30, 30, 30);
+
+  // Instructions
+  if (paper.instructions?.length) {
+    doc.setFillColor(247, 245, 240);
+    doc.roundedRect(margin, y, contentW, 8 + paper.instructions.length * 6, 3, 3, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text('GENERAL INSTRUCTIONS', margin + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    paper.instructions.forEach((inst, i) => {
+      doc.text(`${i + 1}. ${inst}`, margin + 4, y + 12 + i * 6);
+    });
+    y += 10 + paper.instructions.length * 6 + 6;
+  }
+
+  // Student Info
+  checkPage(30);
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, y, contentW, 24, 3, 3);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 100, 100);
+  doc.text('STUDENT INFORMATION', margin + 4, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(10);
+  const fields = [
+    ['Name', studentInfo.name || '________________________'],
+    ['Roll Number', studentInfo.rollNumber || '___________'],
+    ['Section', studentInfo.section || '___________'],
+  ];
+  fields.forEach(([label, val], i) => {
+    const x = margin + 4 + i * (contentW / 3);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(label, x, y + 13);
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 30);
+    doc.text(val, x, y + 21);
+  });
+  y += 32;
+
+  // Sections
+  const diffColors: Record<string, [number, number, number]> = {
+    Easy: [234, 243, 222],
+    Moderate: [250, 238, 218],
+    Hard: [252, 235, 235],
+  };
+
+  paper.sections.forEach((section, si) => {
+    checkPage(20);
+    // Section header
+    doc.setFillColor(29, 158, 117);
+    doc.roundedRect(margin, y, contentW, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(
+      `Section ${String.fromCharCode(65 + si)}: ${section.title}`,
+      margin + 4,
+      y + 7
+    );
+    const sectionMarks = section.questions.reduce((a, q) => a + q.marks, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`[${sectionMarks} marks]`, pageW - margin - 20, y + 7);
+    y += 13;
+
+    // Section instruction
+    checkPage(8);
+    doc.setTextColor(15, 110, 86);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.text(section.instruction, margin + 2, y);
+    y += 8;
+
+    // Questions
+    section.questions.forEach((q, qi) => {
+      const lines = doc.splitTextToSize(`${q.text}`, contentW - 28);
+      const qHeight = Math.max(14, lines.length * 5 + 10);
+      checkPage(qHeight);
+
+      doc.setTextColor(29, 158, 117);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(`Q${qi + 1}.`, margin, y + 5);
+
+      doc.setTextColor(30, 30, 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(lines, margin + 10, y + 5);
+
+      // Difficulty badge
+      const dc = diffColors[q.difficulty] || diffColors.Moderate;
+      doc.setFillColor(...dc);
+      doc.roundedRect(margin + 10, y + lines.length * 5 + 2, 20, 5, 1, 1, 'F');
+      doc.setFontSize(7);
+      doc.setTextColor(80, 80, 80);
+      doc.text(q.difficulty, margin + 11, y + lines.length * 5 + 6);
+
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(9);
+      doc.text(`[${q.marks}m]`, pageW - margin - 12, y + 5);
+
+      if (qi < section.questions.length - 1) {
+        doc.setDrawColor(230, 230, 225);
+        doc.line(margin, y + qHeight - 1, pageW - margin, y + qHeight - 1);
+      }
+      y += qHeight + 2;
+    });
+
+    y += 6;
+  });
+
+  // Footer
+  checkPage(10);
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, y, pageW - margin, y);
+  y += 5;
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Generated by VedaAI Assessment Creator', margin, y);
+  doc.text(`Total: ${paper.totalMarks} marks`, pageW - margin - 30, y);
+
+  doc.save(`${paper.title.replace(/\s+/g, '_')}_paper.pdf`);
+};
