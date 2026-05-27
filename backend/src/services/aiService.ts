@@ -1,7 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { AssignmentInput, GeneratedPaper } from '../types';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const SYSTEM_PROMPT = `You are an expert academic question paper generator. Given assignment details, generate a complete structured question paper.
 
@@ -59,16 +59,18 @@ Ensure the paper is comprehensive, well-structured, and appropriate for the subj
 
   onProgress?.(30, 'Sending to AI model...');
 
-  const response = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userPrompt }],
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: userPrompt,
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      temperature: 0.7,
+    }
   });
 
   onProgress?.(70, 'Parsing AI response...');
 
-  const raw = response.content.find((b) => b.type === 'text')?.text || '';
+  const raw = response.text || '';
   const cleaned = raw.replace(/```json|```/g, '').trim();
 
   let paper: GeneratedPaper;
