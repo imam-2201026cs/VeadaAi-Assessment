@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { assignmentSchema, AssignmentSchema } from '@/lib/validation';
 import { useAppStore } from '@/store/useAppStore';
 import { assignmentApi } from '@/lib/api';
-import { useWebSocket } from '@/hooks/useWebSocket';
+
 import { QuestionType } from '@/types';
 import { useState } from 'react';
 
@@ -13,8 +13,7 @@ const QUESTION_TYPES: QuestionType[] = [
 ];
 const DIFFICULTIES = ['easy', 'medium', 'hard', 'mixed'] as const;
 
-export default function AssignmentForm() {
-  const { joinAssignment, leaveAssignment } = useWebSocket();
+export default function AssignmentForm({ onJoin }: { onJoin?: (id: string) => void }) {
   const {
     setStep, setIsGenerating, setCurrentAssignmentId,
     setError, error, setGenerationProgress, setGenerationMessage,
@@ -49,7 +48,7 @@ export default function AssignmentForm() {
       const result = await assignmentApi.create(data);
       const { assignmentId } = result.data;
       setCurrentAssignmentId(assignmentId);
-      joinAssignment(assignmentId);
+      onJoin?.(assignmentId);
     } catch (err: any) {
       setError(err.message || 'Failed to create assignment');
       setIsGenerating(false);
